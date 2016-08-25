@@ -14,4 +14,4 @@ admin command :
 to stop the scrypt: /msg botnickname !die 
 to know how many chan is connected to the bot : /msg botnickname !info
 
-Je suis pas contre une petite correction de mon franglais ;)
+Je ne serais pas contre une petite correction de mon franglais ;)
