@@ -20,7 +20,8 @@ class myBot(irc.bot.SingleServerIRCBot):
 	Se connecte au serveur, fait un /LIST puis rejoins les canaux avec 
 	plus de minusers de connectés.
 	Une fois le bot connecté, tout les evenement sont enregistré dans 
-	log_file
+	log_file et les message privés sont traité par self.process_private_msg
+	et les commandes qu'ils contiennent sont exécutées.
 	"""
 	def __init__(self, server, admin, nickname= "", realname= "", password= "", minusers=0, outfile= None):
 		if outfile == None : 
@@ -33,7 +34,11 @@ class myBot(irc.bot.SingleServerIRCBot):
 		self.nickname = lambda: "".join([string.ascii_letters[random.randint(0,len(string.ascii_letters)-1)]for x in range(10)]) if nickname == "" else nickname
 		self.realname = lambda: "".join([string.ascii_letters[random.randint(0,len(string.ascii_letters)-1)]for x in range(10)]) if realname == "" else realname
 		self.password = lambda: "".join([string.ascii_letters[random.randint(0,len(string.ascii_letters)-1)]for x in range(10)]) if password == "" else paswword
-		
+		self.quit_msg = [	"""Ho i'm not gonna kill you, noo,"""
+							"""i'm gonna hurt you sooo baad !""",
+							"""you borred me so much, i'm gonna kill myself !""",
+							""" Ho you kill me dude !""",
+							"""don't kill me dude, i'am aliv...beep...beep..."""]				 
 		irc.bot.SingleServerIRCBot.__init__(self,
 			server, 
 			self.nickname(),
@@ -104,9 +109,35 @@ class myBot(irc.bot.SingleServerIRCBot):
 				#print (chan[0] + ": " + str(chan[1]))
 				tmp.append(chan)
 		return sorted(tmp, key=itemgetter(1))
-	
+		
+	def join_all(self,serv):
+		"""
+		Cette méthode est appelée pour traiter la commande !join_all
+		on commence par effacer la liste de cannaux, puis on retire le
+		dernier global_handler de la pile d'appel et du coup les évenements
+		seront de nouveau dispatché dans les fonction par defaut
+		on_événement
+		puis pour finir on fait un /LIST
+		a ce moment la on se retrouve dans la configuration de départ
+		et le script va faire :
+			on_list
+			on_listend
+			filterlist
+			joinlist
+			on_all
+		"""
+		self.chanlist = []
+		self.reactor.remove_global_handler("all_events",self.on_all)
+		serv.list()
+		
 	def write_log(self,ev):
-		if ev.type !="welcome" and ev.type !="all_raw_messages":
+		"""
+		cette methode est appelé sur tout les évenement. elle prend skip
+		tout les message du type 'all_raw_message' et enregistre les autres
+		dans le fichier self.log_file
+		de plus tout les message public sont redirigé sur la sortie standard.
+		"""
+		if ev.type !="all_raw_messages":
 			msg = "{} {} ".format(time.time(),ev.type)
 			if ev.source : msg += ev.source + " "
 			if ev.target : msg += ev.target + " "
@@ -122,6 +153,11 @@ class myBot(irc.bot.SingleServerIRCBot):
 				self.log_file.flush()
 										
 	def openfile(self,outfile):
+		"""
+		Ouvre le fichier outfile. Si le chemin n'existe pas l'arboréscence
+		complètte est crée
+		retourne le handle du fichier ouvert en mode append
+		"""
 		print(outfile)	
 		path = "/".join(outfile.split('/')[:-1])
 		if not os.path.exists(path):
@@ -129,18 +165,57 @@ class myBot(irc.bot.SingleServerIRCBot):
 		return open(outfile,'a')
 		
 	def process_private_msg(self, serv, ev):
+		"""
+		Lorsqu'un message privé est reçu cette methode vérifie la source
+		si c'est l'administrateur du bot alors la commande est traitée
+		sinon le message est transmi a l'administrateur
+		commande du bot :
+		!die : deconnecte le bot
+		!info : retourne le nombre de chan auquel est connecté le bot
+		!msg nickname text: envoyer un msg a travers le bot
+		!join #canal : rejoindre un canal
+		!join_all miniusers : rejoin tout les canaux avec plus de minusers utilisateurs
+		!part #canal : quiter un canal
+		!part_all : quite tout les cannaux 
+		
+		"""
 		nm = irc.client.NickMask(ev.source)
 		if nm.nick == self.admin :
 			if ev.arguments[0] == "!die":
+				serv.privmsg(self.admin,self.quit_msg[random.randint(0,len(self.quit_msg)-1)])
 				self.die()
 			if ev.arguments[0] == "!info":
 				msg = "i'm connected to {} chan(s).".format(len(self.channels))
 				serv.privmsg(self.admin, msg)
+			if ev.arguments[0][0:4] == "!msg":
+				msg = ev.arguments[0].split(" ")
+				if len(msg) < 3 : serv.privmsg(self.admin,"error : !msg [nick] [text]")
+				else : serv.privmsg(msg[1],msg[2])
+			if ev.arguments[0][0:5] == "!join":
+				msg = ev.arguments[0].split("#")
+				if len(msg) == 2: serv.join('#'+ msg[1])
+				elif ev.arguments[0][0:9] == "!join_all":
+					msg = ev.arguments[0].split(" ")
+					try:
+						self.minusers = int(msg[1])
+						self.join_all(serv)
+					except:
+						serv.privmsg(self.admin,"Error: Can't join_all")
+				else: serv.privmsg(self.admin, "Error: !join #channel or !join_all")
+			if ev.arguments[0][0:5] == "!part":
+				msg = ev.arguments[0].split("#")
+				if len(msg) == 2: serv.part('#'+ msg[1])
+				elif ev.arguments[0][0:9] == "!part_all":
+					serv.part(self.channels)
+				else : serv.privmsg(self.admin,"Error : !part [chan] or !part_all")
+					
+				
+			
 		else:
 			serv.privmsg(self.admin,"{} say > {}".format(ev.source, ev.arguments[0]))
-				
-	def on_all(self, serv, ev):	
 		
+	def on_all(self, serv, ev):	
+		#print("on_all")
 		self.write_log(ev)
 		
 		if ev.type == "privmsg":
@@ -171,10 +246,18 @@ def main():
 		admin = sys.argv[3]
 		minusers = int(sys.argv[4])
 		outfile = False
+		nickname = False
 	
 	if len(sys.argv) > 5:
 		outfile = sys.argv[5]
+		nickname = False
+	
+	#if len(sys.argv) > 6:
+	#	nickname = sys.argv[6]
 
+	#if nickname:
+	#	bot = myBot([(host,port)],admin ,nickname= nickname, minusers= minusers,outfile= outfile)
+	
 	if outfile:
 		bot = myBot([(host,port)],admin ,minusers= minusers,outfile= outfile)
 		
