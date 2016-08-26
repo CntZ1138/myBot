@@ -9,9 +9,12 @@ Usage : python3 myBot.py [hostname] [port] [your_nick_name] [minuser] [outfile_p
 OPTIONAL:
   minuser : the bot not go on channel with have less users than minuser, ex : 200
   outfile_path : the file name where the log will be saved.
-
-admin command : 
-to stop the scrypt: /msg botnickname !die 
-to know how many chan is connected to the bot : /msg botnickname !info
-
-Je ne serais pas contre une petite correction de mon franglais ;)
+  
+	commande du bot :
+	!die : deconnecte le bot
+	!info : retourne le nombre de chan auquel est connecté le bot
+	!msg nickname text: envoyer un msg a travers le bot
+	!join #canal : rejoindre un canal
+	!join_all miniusers : rejoin tout les canaux avec plus de minusers utilisateurs
+	!part #canal : quiter un canal
+	!part_all : quite tout les cannaux 
