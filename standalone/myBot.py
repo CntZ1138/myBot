@@ -22,6 +22,15 @@ class myBot(irc.bot.SingleServerIRCBot):
 	Une fois le bot connecté, tout les evenement sont enregistré dans 
 	log_file et les message privés sont traité par self.process_private_msg
 	et les commandes qu'ils contiennent sont exécutées.
+	
+	[start]
+	on_welcome.
+	on_list jusqu'à on_listend
+	filterlist
+	joinlist(	mise en place d'une répétion toute les 4 seconde jusqua connection
+				avec tout les cannaux)
+	on_all
+	
 	"""
 	def __init__(self, server, admin, nickname= "", realname= "", password= "", minusers=0, outfile= None):
 		if outfile == None : 
@@ -221,13 +230,7 @@ class myBot(irc.bot.SingleServerIRCBot):
 		if ev.type == "privmsg":
 			self.process_private_msg(serv, ev)
 		
-		
-		
-			
-			
-		
-			
-			
+					
 def main():
 	"""
 	Récupère les arguments de la ligne de commandes et les passe a l'objet myBot
@@ -267,17 +270,6 @@ def main():
 	bot.start()
 	return True
 			
-				
-		
-		
-	
-	
-		
-			
-			
-		
-		
-
 if __name__ == "__main__":
 	main()
 		
